@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Consultas específicas; não usamos QUERY_ALL_PACKAGES nem INTERNET. -->
+    <queries>
+        <package android:name="com.miui.fm" />
+        <package android:name="com.miui.fmservice" />
+        <package android:name="com.miui.fmradio" />
+        <package android:name="com.android.fmradio" />
+        <package android:name="com.qualcomm.qti.fm" />
+        <package android:name="com.caf.fmradio" />
+        <package android:name="com.mediatek.fmradio" />
+        <package android:name="com.samsung.android.app.fmradio" />
+        <package android:name="com.motorola.fmplayer" />
+        <package android:name="com.oppo.fmradio" />
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="unspecified">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
