@@ -3,6 +3,10 @@ package br.com.fmlab.redmi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ComponentInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.ServiceInfo;
 import android.content.pm.PackageManager;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -58,6 +62,7 @@ public final class FmInspector {
         public final List<String> fmAudioTypes = new ArrayList<>();
         public final List<String> radioNodes = new ArrayList<>();
         public final List<String> fmFeatures = new ArrayList<>();
+        public final List<String> exportedComponents = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
 
         public boolean hasNativeApp() {
@@ -87,6 +92,19 @@ public final class FmInspector {
                 boolean sys = (app.flags & ApplicationInfo.FLAG_SYSTEM) != 0 ||
                         (app.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
                 s.apps.add(new RadioApp(pkg, label, launcher != null, app.enabled, sys));
+                // Levanta apenas metadados públicos de componentes; não os executa.
+                try {
+                    int flags = PackageManager.GET_ACTIVITIES | PackageManager.GET_SERVICES | PackageManager.GET_RECEIVERS;
+                    PackageInfo details = pm.getPackageInfo(pkg, flags);
+                    if (details.activities != null) for (ActivityInfo a : details.activities)
+                        recordExported(s, pkg, a, "Activity", a.permission);
+                    if (details.services != null) for (ServiceInfo service : details.services)
+                        recordExported(s, pkg, service, "Service", service.permission);
+                    if (details.receivers != null) for (ActivityInfo receiver : details.receivers)
+                        recordExported(s, pkg, receiver, "Receiver", receiver.permission);
+                } catch (PackageManager.NameNotFoundException | SecurityException ignored) {
+                    s.notes.add("Detalhes públicos de " + pkg + " não acessíveis.");
+                }
             } catch (PackageManager.NameNotFoundException ignored) {
                 // Um pacote desconhecido ou oculto não comprova ausência de hardware FM.
             } catch (RuntimeException e) {
@@ -143,6 +161,13 @@ public final class FmInspector {
         return s;
     }
 
+    private static void recordExported(Scan s, String pkg, ComponentInfo info, String kind, String permission) {
+        if (!info.exported || s.exportedComponents.size() >= 25) return;
+        String name = info.name == null ? "?" : info.name;
+        s.exportedComponents.add(kind + " " + pkg + "/" + name +
+                (permission == null ? " (sem permissão declarada)" : " (exige " + permission + ")"));
+    }
+
     public static boolean launchNativeRadio(Context ctx, Scan scan) {
         PackageManager pm = ctx.getPackageManager();
         for (RadioApp app : scan.apps) {
@@ -169,7 +194,7 @@ public final class FmInspector {
     }
 
     public static String report(Scan s, String userResult) {
-        StringBuilder b = new StringBuilder("FM LAB — RELATÓRIO OFFLINE\n");
+        StringBuilder b = new StringBuilder("FM LIVRE — RELATÓRIO OFFLINE\n");
         b.append("Data: ").append(s.timestamp).append('\n');
         b.append("Dispositivo: ").append(s.device).append('\n');
         b.append("Codinomes: ").append(s.build).append('\n');
@@ -189,6 +214,9 @@ public final class FmInspector {
                 .append(s.fmFeatures.isEmpty() ? "nenhum" : join(s.fmFeatures)).append('\n');
         b.append("Interfaces /dev: ")
                 .append(s.radioNodes.isEmpty() ? "não visíveis" : join(s.radioNodes)).append('\n');
+        b.append("Componentes FM exportados: ").append(s.exportedComponents.size()).append('\n');
+        for (String component : s.exportedComponents) b.append("- ").append(component).append('\n');
+        b.append("Observação: componente exportado não prova comando de sintonia.\n");
         b.append("Teste prático informado pelo usuário: ").append(userResult).append('\n');
         if (!s.notes.isEmpty()) b.append("Observações técnicas: ").append(join(s.notes)).append('\n');
         b.append("\nINTERPRETAÇÃO: resultados negativos de consultas não provam ausência de chip FM. ")

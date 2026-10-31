@@ -1,102 +1,81 @@
-# FM Lab — Teste de rádio FM offline (Redmi Note 13 4G)
+# FM Livre 2.0 — Rádio FM offline para Redmi Note 13 4G
 
-Aplicativo Android nativo para **diagnosticar indícios de suporte ao rádio FM e testar a recepção real no próprio aparelho**, sem root e sem conexão à internet durante o uso. Projeto em Java, API 24+ (Android 7.0 ou superior), sem bibliotecas de interface externas.
+Aplicativo Android nativo **sem internet**, pensado para aproveitar a confirmação de recepção FM no Redmi Note 13 4G. Feito em **Java**, sem bibliotecas externas, com suporte a **Android 7.0+**.
 
-> **Importante:** o FM Lab **não sintoniza estações dentro do próprio aplicativo**, pois a interface de rádio FM do Android é reservada a aplicativos privilegiados/sistema. O app encontra possíveis evidências, tenta abrir o rádio nativo Xiaomi e registra o teste que você efetivamente fez. Ausência de evidências NÃO significa que não exista receptor FM.
+## Estado real do desenvolvimento
 
-## O que funciona
+**Funciona nesta versão:** interface de rádio, faixa brasileira de **76,1 a 107,9 MHz** (pré-seleção), ajustes em passos de 0,1 MHz, nomeação e armazenamento local de estações favoritas, modo claro/escuro, detecção de sinais FM, abertura do rádio do fabricante quando a ROM permite, diagnóstico e exportação de relatório.
 
-- Detecta pacotes conhecidos de rádio FM, especialmente o `com.miui.fm` da Xiaomi, verificando se podem ser abertos.
-- Consulta `AudioDeviceInfo.TYPE_FM` e `TYPE_FM_TUNER`, recursos FM declarados, fones com fio e a visibilidade de `/dev/radio*`.
-- Mostra o resultado com explicação e nunca afirma ausência de chip apenas por um teste negativo.
-- Abre um aplicativo de rádio instalado, quando o sistema permite.
-- Explica o teste manual: **fone com fio + Wi-Fi desligado + dados móveis desligados + emissora real**.
-- Salva o resultado prático confirmado pelo usuário no dispositivo.
-- Copia ou compartilha um relatório técnico completo.
-- Funciona offline. Não possui permissão `INTERNET`, não solicita root nem coleta dados pessoais.
+**Ainda não funciona:** alterar a sintonia do receptor diretamente *dentro do FM Livre*, buscar estações automaticamente, comandar volume/reprodução do hardware FM ou capturar o áudio da rádio nativa. A frequência escolhida na tela do FM Livre é **somente uma pré-seleção salva localmente**. A estação real deve ser sintonizada dentro do aplicativo FM da Xiaomi.
 
-## Instalar no Redmi (maneira mais fácil: GitHub Actions)
+O fato de o Redmi ter um receptor funcional **não concede automaticamente** permissões de rádio a um aplicativo instalado normalmente. O Android reserva `ACCESS_FM_RADIO` / `ACCESS_BROADCAST_RADIO` para apps de sistema/assinados. O projeto não contorna isso com root, serviços de acessibilidade ou permissão privilegiada falsa.
 
-1. Crie um repositório no GitHub ou use um repositório novo na sua organização.
-2. Envie o **conteúdo desta pasta** para a branch `main` (inclua a pasta `.github`).
-3. Entre em **Actions** → **FM Lab - Gerar APK Android** → **Run workflow**. Um push na `main` também inicia a build.
-4. Ao concluir com sucesso, abra a execução e baixe o artefato **FM-Lab-Redmi-APK**.
-5. Extraia o arquivo ZIP baixado no GitHub. Dentro estará o **`app-debug.apk`**.
-6. Copie para o Redmi, instale (autorize a instalação de aplicativos dessa origem, se solicitado) e abra **FM Lab**.
+## Funcionalidades do FM Livre
 
-O APK `debug` é **assinado automaticamente para testes** pelo sistema Android Gradle Plugin; não é um APK de produção/Play Store.
+- **Rádio:** dial e seletor de frequência (76,1–107,9 MHz), passos de 0,1 MHz, botão para abrir o rádio nativo.
+- **Favoritos:** salvar/renomear/excluir estações, listagem local, manter a última frequência selecionada.
+- **Aparência:** tema escuro e claro, layout responsivo, sem bibliotecas externas.
+- **Diagnóstico:** nome do aparelho, versão Android, pacotes FM conhecidos, rotas de áudio FM, conexão de fone com fio, recursos do sistema e nós de dispositivo visíveis.
+- **Teste real:** registra se o usuário ouviu uma emissora com Wi-Fi e dados móveis desligados; recupera esse registro da versão anterior do FM Lab.
+- **Investigação avançada:** relatório técnico copiável/compartilhável e comandos ADB para verificar o firmware.
+- **Privacidade:** não solicita INTERNET, root, localização ou acesso ao microfone. Os favoritos ficam no próprio aparelho. Compartilhamento só ocorre se você acionar o botão e selecionar outro app.
 
-## Correção da falha do GitHub Actions (SDK `tools`)
+## Gerar o APK no GitHub Actions
 
-Se a execução exibir `Warning: Failed to find package 'tools'` e terminar no passo `android-actions/setup-android@v3`, atualize `.github/workflows/android-apk.yml` com o arquivo deste projeto. A versão 4 da action não tenta instalar o antigo pacote `tools`; ela configura as ferramentas de linha de comando e o projeto instala apenas `platforms;android-35` e `build-tools;35.0.0`. Faça commit na `main` e execute o workflow novamente. O erro ocorre **antes** da compilação do aplicativo, portanto não é evidência de erro no código Java.
+1. Crie um repositório novo ou atualize o projeto anterior, enviando **o conteúdo** desta pasta para a branch `main`, inclusive `.github/workflows/android-apk.yml`.
+2. Abra **Actions** → **FM Livre — APK Android** → **Run workflow**, ou faça um `push` para `main`.
+3. Quando a compilação terminar, abra a execução → **Artifacts** → **FM-Livre-Android-APK**.
+4. Extraia o ZIP do artefato e instale `app-debug.apk` no Redmi Note 13 4G.
+5. Conecte um fone com fio (se necessário como antena), desligue Wi-Fi e dados móveis e use **Abrir rádio FM do celular**.
 
-## Compilar localmente (Windows / Android Studio)
+O fluxo compila com **JDK 17**, **Gradle 8.11.1**, **Android SDK 35** e `android-actions/setup-android@v4` (corrigindo o antigo erro do pacote `tools`). Gera APK **debug** assinado automaticamente para testes, não um binário de publicação comercial.
 
-Requisitos: Android Studio com Android SDK 35, JDK 17 e acesso à internet **somente para baixar as dependências de compilação**.
+### Compilar localmente
 
-1. Extraia o projeto e abra a pasta `FM-Lab-Redmi` no Android Studio.
-2. Se o Android Studio pedir o Gradle Wrapper JAR, execute uma vez no PowerShell, na raiz do projeto:
+Precisa ter Android Studio + Android SDK 35 e Java 17. Abra a pasta no Android Studio. Caso o wrapper ainda não tenha o JAR, execute no PowerShell:
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\scripts\prepare-gradle.ps1
-   ```
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\prepare-gradle.ps1
+.\gradlew.bat :app:assembleDebug
+```
 
-   O script baixa o wrapper oficial Gradle 8.11.1 e verifica o SHA-256. Depois sincronize o projeto no Android Studio.
+O APK fica em `app\build\outputs\apk\debug\app-debug.apk`.
 
-3. Para compilar no terminal (com `java` e o Android SDK configurados):
+Alternativa com Gradle 8.11.1 instalado: `gradle --no-daemon :app:assembleDebug`.
 
-   ```powershell
-   .\gradlew.bat :app:assembleDebug
-   ```
+## Como usar
 
-4. APK criado em `app\build\outputs\apk\debug\app-debug.apk`.
+1. Abra **FM Livre** e ajuste a **pré-seleção** da frequência.
+2. Toque em **Salvar / editar frequência favorita** para atribuir o nome da emissora.
+3. Toque em **Abrir rádio FM do celular** para abrir o rádio original. **Ajuste também a frequência nele**.
+4. Confirme que está captando FM com internet desligada.
+5. Na aba **Diagnóstico**, toque em **Copiar diagnóstico** para preparar a próxima etapa do projeto.
 
-No Linux/macOS: `chmod +x gradlew && ./gradlew :app:assembleDebug`.
+## Para descobrir se conseguiremos controlar o receptor de dentro do app
 
-## Como interpretar
+No Windows, habilite as opções de desenvolvedor e a depuração USB e use o ADB. As instruções estão em [docs/adb-investigacao.md](docs/adb-investigacao.md). Os resultados ajudarão a verificar se a versão HyperOS/MIUI do dispositivo expõe alguma atividade ou interface compatível para um app comum.
 
-| Evidência | O que significa |
-| --- | --- |
-| `com.miui.fm` encontrado | Existe um aplicativo conhecido de rádio FM. Pode estar desativado ou depender do chipset/firmware. |
-| `TYPE_FM_TUNER` exposto | O sistema anuncia uma rota de áudio FM, mas pode continuar sem dar acesso ao sintonizador. |
-| `/dev/radio0` não aparece | O sistema pode esconder dispositivos, inclusive por SELinux. Não é prova de ausência. |
-| App nativo realmente reproduz com Wi-Fi/dados desligados | **Confirma recepção offline naquele aparelho, conforme o teste prático.** |
-| Nada encontrado | Resultado inconclusivo: fabricante pode não expor o recurso a apps comuns. |
+**Não é garantido que exista uma API pública:** mesmo quando o rádio FM nativo funciona, outro aplicativo pode não ter como controlar a sintonia sem privilégios de sistema. Não distribuiremos técnicas que exigem root como se fossem solução universal.
 
-## Privacidade e limites
+## Arquivos principais
 
-- Este aplicativo não acessa internet e não tem `android.permission.INTERNET`.
-- O botão **Compartilhar** permite abrir outro app escolhido pelo usuário; esse outro app pode usar internet, se você decidir enviar o relatório.
-- Não acessa permissões ocultas, não altera o rádio do firmware, não requer desbloqueio de bootloader ou root.
-- O Android não disponibiliza uma API pública universal para sintonizar rádio FM de smartphones. `ACCESS_FM_RADIO` é uma permissão privilegiada do sistema.
-- Os resultados ainda precisam de confirmação física no Redmi Note 13 4G.
+```
+app/src/main/java/br/com/fmlab/redmi/
+  MainActivity.java        # Interface de rádio, favoritos, diagnóstico e relatório
+  FmInspector.java        # Verificações públicas do Android e abertura do rádio OEM
+  StationStore.java       # Favoritos locais em SharedPreferences/JSON
+app/src/main/AndroidManifest.xml  # Sem permissão INTERNET
+.github/workflows/android-apk.yml # Compila e disponibiliza APK para download
+docs/adb-investigacao.md         # Próximo teste de permissões/integração
+```
+
+Mantido o **mesmo applicationId `br.com.fmlab.redmi`** da primeira versão para que o APK possa atualizar o FM Lab instalado sem perder a confirmação manual do teste. `versionCode` aumentado de 1 para 2. A atualização exige que o APK seja assinado com a **mesma chave** usada na instalação anterior; builds debug em runners diferentes normalmente têm chaves diferentes. Se a atualização falhar, desinstale o FM Lab antigo e instale o novo (isso apaga os dados locais do app).
 
 ## Referências técnicas
 
-- Xiaomi — [REDMI Note 13 FAQ](https://www.mi.com/my/support/faq/details/KA-91513/)
-- Android Open Source — [permissão privilegiada ACCESS_FM_RADIO](https://android.googlesource.com/platform/frameworks/base/+/main/core/res/AndroidManifest.xml)
-- Android — [AudioDeviceInfo](https://developer.android.com/reference/android/media/AudioDeviceInfo)
-- Android — [visibilidade de pacotes](https://developer.android.com/training/package-visibility/declaring)
+- [Xiaomi — Redmi Note 13, FAQ (suporte a FM)](https://www.mi.com/my/support/faq/details/KA-91513/)
+- [Android — `AudioDeviceInfo.TYPE_FM_TUNER`](https://developer.android.com/reference/android/media/AudioDeviceInfo)
+- [AOSP — `ACCESS_FM_RADIO` e `ACCESS_BROADCAST_RADIO` (permissões reservadas)](https://android.googlesource.com/platform/frameworks/base/+/main/core/res/AndroidManifest.xml)
+- [android-actions/setup-android v4](https://github.com/android-actions/setup-android)
 
-## Organização
-
-```text
-FM-Lab-Redmi/
-├── .github/workflows/android-apk.yml
-├── app/
-│   ├── build.gradle
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── java/br/com/fmlab/redmi/
-│       │   ├── FmInspector.java
-│       │   └── MainActivity.java
-│       └── res/
-│           ├── drawable/ic_launcher.xml
-│           └── values/strings.xml
-├── gradle/wrapper/gradle-wrapper.properties
-├── scripts/prepare-gradle.ps1
-├── gradlew / gradlew.bat
-├── build.gradle
-├── settings.gradle
-└── README.md
-```
+**Verificação:** os arquivos do projeto foram preparados e revisados neste ambiente, mas **o APK não foi compilado nem testado fisicamente aqui**. A compilação é realizada pelo Android Studio/GitHub Actions; a recepção FM depende do Redmi real.
