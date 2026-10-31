@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Consultas específicas; não usamos QUERY_ALL_PACKAGES nem INTERNET. -->
+    <!-- Android 11+: visibilidade por pacotes conhecidos e atividades iniciais.
+         Sem QUERY_ALL_PACKAGES, INTERNET, root ou permissões privilegiadas. -->
     <queries>
         <package android:name="com.miui.fm" />
+        <package android:name="com.sec.android.app.fm" />
+        <package android:name="com.motorola.fmradio" />
+        <package android:name="com.motorola.fmplayer" />
+        <package android:name="com.motorola.radio" />
         <package android:name="com.miui.fmservice" />
         <package android:name="com.miui.fmradio" />
         <package android:name="com.android.fmradio" />
@@ -11,8 +16,14 @@
         <package android:name="com.caf.fmradio" />
         <package android:name="com.mediatek.fmradio" />
         <package android:name="com.samsung.android.app.fmradio" />
-        <package android:name="com.motorola.fmplayer" />
         <package android:name="com.oppo.fmradio" />
+        <package android:name="com.transsion.fmradio" />
+        <!-- Permite descobrir aplicativos Rádio FM presentes na tela inicial,
+             sem permissão para enumerar todos os pacotes do sistema. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application

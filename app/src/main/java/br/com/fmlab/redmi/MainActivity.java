@@ -29,8 +29,8 @@ import android.widget.Toast;
 import java.util.List;
 
 /**
- * Aplicativo FM offline sem root. O seletor NÃO sintoniza o hardware:
- * a sintonia ainda é feita no aplicativo do fabricante, quando disponível.
+ * Aplicativo FM offline sem root, Android 11+. O seletor NÃO sintoniza o chip.
+ * O FM real é reproduzido pelo rádio OEM quando o fabricante o disponibiliza.
  */
 public final class MainActivity extends Activity {
     private int bg, surface, raised, border, primary, secondary, accent, orange;
@@ -202,12 +202,12 @@ public final class MainActivity extends Activity {
         header.addView(theme, new LinearLayout.LayoutParams(dp(53), dp(48)));
         add(content, header);
         gap(content, 8);
-        add(content, tag("●  SEM INTERNET  ·  SEM STREAMING"));
+        add(content, tag("●  OFFLINE  ·  ANDROID 11+"));
         gap(content, 23);
 
         if (tab == 0) renderRadio(); else renderDiagnostics();
         gap(content, 24);
-        TextView bottomNote = text("FM LIVRE  •  VERSÃO 2.0  •  EXPERIMENTAL", 10, secondary, true);
+        TextView bottomNote = text("FM LIVRE UNIVERSAL  •  3.0  •  SEM ROOT", 10, secondary, true);
         bottomNote.setGravity(Gravity.CENTER);
         add(content, bottomNote);
 
@@ -243,7 +243,7 @@ public final class MainActivity extends Activity {
         frequencyView = text(StationStore.frequency(selected) + " MHz", 47, primary, true);
         frequencyView.setGravity(Gravity.CENTER);
         add(dial, frequencyView);
-        stationHint = text("Pronto para salvar como favorita", 12, secondary, false);
+        stationHint = text("Frequência local, sem sintonia automática", 12, secondary, false);
         stationHint.setGravity(Gravity.CENTER);
         add(dial, stationHint);
         gap(dial, 12);
@@ -281,20 +281,34 @@ public final class MainActivity extends Activity {
         controls.addView(plus, right);
         add(dial, controls);
         gap(dial, 13);
-        TextView caution = text("A frequência acima é uma anotação local. Ela NÃO altera o sintonizador da Xiaomi.",
+        TextView caution = text("Esta frequência é uma pré-seleção local, não uma sintonia de hardware.",
                 12, light ? 0xFF62653B : 0xFFF2DEA2, false);
         caution.setGravity(Gravity.CENTER);
         add(dial, caution);
         refreshStationPreview();
         gap(content, 13);
 
-        add(content, button("◉  Abrir rádio FM do celular", true, this::launchNative));
+        add(content, button("◉  Escolher e abrir rádio FM disponível", true, this::launchNative));
         gap(content, 8);
-        add(content, text("O áudio FM real continua sendo controlado pelo aplicativo original do aparelho. " +
-                "Selecione nele a frequência desejada.", 12, secondary, false));
+        add(content, text("Nos Samsung, Motorola e Xiaomi compatíveis, a sintonia FM real ocorre no aplicativo do fabricante. " +
+                "Se nenhum estiver acessível, o sistema mostrará o diagnóstico.", 12, secondary, false));
         gap(content, 13);
         add(content, button("☆  Salvar / editar frequência favorita", false, this::editFavorite));
         gap(content, 25);
+
+        heading("Acesso ao rádio do aparelho", "Reconhecimento de apps FM acessíveis nesta versão do Android.");
+        LinearLayout nativeStatus = card();
+        String detected = scan.apps.isEmpty()
+                ? "Nenhum aplicativo FM encontrado. Isso NÃO prova ausência de receptor."
+                : scan.apps.size() + " candidato(s) encontrado(s). " +
+                    (scan.hasNativeApp() ? "Há um aplicativo OEM iniciável." : "Nenhuma entrada OEM confirmada.");
+        add(nativeStatus, text(detected, 14, primary, true));
+        gap(nativeStatus, 7);
+        add(nativeStatus, text("Modelo: " + scan.device + " · Android " + scan.android, 12, secondary, false));
+        gap(nativeStatus, 7);
+        add(nativeStatus, text(scan.wiredHeadset ? "Fone com fio detectado." :
+                "Conecte um fone com fio se o receptor exigir antena externa.", 12, secondary, false));
+        gap(content, 23);
 
         heading("Estações favoritas", "Salvas neste celular. Toque para selecionar; remova ou renomeie quando quiser.");
         List<StationStore.Station> stations = stationStore.list();
@@ -403,12 +417,48 @@ public final class MainActivity extends Activity {
 
     private void launchNative() {
         scan = FmInspector.inspect(this);
-        if (FmInspector.launchNativeRadio(this, scan)) return;
+        java.util.List<FmInspector.RadioApp> openable = new java.util.ArrayList<>();
+        for (FmInspector.RadioApp app : scan.apps) {
+            if (app.canLaunch && app.enabled) openable.add(app);
+        }
+        if (openable.isEmpty()) {
+            new AlertDialog.Builder(this)
+                .setTitle("Nenhum rádio FM acessível")
+                .setMessage("Não encontrei um aplicativo de rádio iniciável nesta ROM. " +
+                    "Verifique se existe um app Rádio/FM instalado ou use Diagnóstico. " +
+                    "A ausência de app acessível não comprova ausência de chip FM.")
+                .setPositiveButton("Abrir diagnóstico", (d, w) -> { tab = 1; render(); })
+                .setNegativeButton("Fechar", null)
+                .show();
+            return;
+        }
+        String preferred = prefs.getString("oem_preferred_package", "");
+        int checked = -1;
+        String[] names = new String[openable.size()];
+        for (int i = 0; i < openable.size(); i++) {
+            FmInspector.RadioApp app = openable.get(i);
+            names[i] = app.displayName + "  (" + app.packageName + ")" +
+                    (app.knownOem ? " · OEM" : " · não verificado");
+            if (app.packageName.equals(preferred)) checked = i;
+        }
+        final int remembered = checked;
         new AlertDialog.Builder(this)
-                .setTitle("Rádio nativo não acessível")
-                .setMessage("O Android não permitiu abrir um dos aplicativos de FM conhecidos. " +
-                        "Procure o app Rádio FM da Xiaomi manualmente. Isso não significa que o receptor esteja ausente.")
-                .setPositiveButton("Entendi", null).show();
+            .setTitle("Escolher rádio (sintonia pelo próprio app)")
+            .setSingleChoiceItems(names, remembered < 0 ? 0 : remembered, (dialog, which) -> {
+                FmInspector.RadioApp chosen = openable.get(which);
+                dialog.dismiss();
+                if (FmInspector.launchRadioApp(this, chosen)) {
+                    prefs.edit().putString("oem_preferred_package", chosen.packageName).apply();
+                } else {
+                    new AlertDialog.Builder(this)
+                        .setTitle("Não foi possível abrir")
+                        .setMessage("O Android ou o fabricante pode bloquear a abertura deste aplicativo. " +
+                            "Tente outro da lista ou abra o rádio nativo manualmente. " +
+                            "O diagnóstico pode ajudar a investigar o motivo.")
+                        .setPositiveButton("Entendi", null).show();
+                }
+            })
+            .setNegativeButton("Cancelar", null).show();
     }
 
     private void diagnosticRow(LinearLayout parent, String name, String detail, boolean found) {
@@ -420,7 +470,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderDiagnostics() {
-        heading("Diagnóstico do receptor", "Verificações públicas do Android. A ausência de sinais não prova ausência do rádio.");
+        heading("Diagnóstico universal", "Android 11+ · Samsung, Motorola, Xiaomi e outros. A ausência de sinais não prova ausência de hardware FM.");
         LinearLayout device = card();
         add(device, text(scan.device, 19, primary, true));
         gap(device, 8);
@@ -434,12 +484,19 @@ public final class MainActivity extends Activity {
         heading("Acesso ao hardware", null);
         LinearLayout info = card();
         diagnosticRow(info, "Aplicativos de rádio", scan.apps.isEmpty()
-                ? "Nenhum dos nomes pesquisados ficou visível para o aplicativo."
+                ? "Nenhum pacote conhecido ou app com nome de rádio foi encontrado nas atividades visíveis."
                 : appNames(), !scan.apps.isEmpty());
         diagnosticRow(info, "Rotas de áudio FM", scan.fmAudioRoute
                 ? join(scan.fmAudioTypes) : "TYPE_FM / TYPE_FM_TUNER não expostos.", scan.fmAudioRoute);
         diagnosticRow(info, "Fone com fio", scan.wiredHeadset
                 ? "Conectado" : "Não detectado pela API de áudio.", scan.wiredHeadset);
+        diagnosticRow(info, "Acessórios de áudio", scan.audioAccessories.isEmpty()
+                ? "Nenhum fone USB ou Bluetooth detectado; alguns aparelhos ocultam rotas."
+                : join(scan.audioAccessories), !scan.audioAccessories.isEmpty());
+        diagnosticRow(info, "Dispositivos USB", scan.usbDevices.isEmpty()
+                ? "Nenhum dispositivo USB acessível detectado. Isto não verifica compatibilidade SDR."
+                : join(scan.usbDevices) + ". A sintonia por SDR USB requer driver e protocolo específico.",
+                !scan.usbDevices.isEmpty());
         diagnosticRow(info, "Interfaces /dev", scan.radioNodeVisible
                 ? join(scan.radioNodes) : "Não visíveis. Podem estar protegidas por SELinux.", scan.radioNodeVisible);
         diagnosticRow(info, "Declaração FM do sistema", scan.fmFeature
@@ -468,11 +525,11 @@ public final class MainActivity extends Activity {
         gap(content, 19);
         heading("Próximo passo técnico", null);
         LinearLayout next = card();
-        add(next, text("Precisamos descobrir se a Xiaomi oferece alguma interface de sintonia acessível ao nosso aplicativo.",
+        add(next, text("Precisamos confirmar por modelo/firmware quais interfaces FM estão acessíveis ao aplicativo.",
                 14, primary, false));
         gap(next, 8);
         add(next, text("As permissões ACCESS_FM_RADIO e ACCESS_BROADCAST_RADIO são reservadas a apps privilegiados. " +
-                "Por enquanto não há comando público confirmado para alterar a frequência da sua ROM.",
+                "Não há API FM pública universal para controlar a frequência de todos os fabricantes.",
                 12, secondary, false));
         gap(next, 12);
         add(next, button("▢  Copiar diagnóstico", false, this::copyReport));
@@ -481,7 +538,7 @@ public final class MainActivity extends Activity {
         gap(next, 8);
         add(next, button("▢  Copiar comandos ADB para PC", false, this::copyAdb));
         gap(content, 20);
-        add(content, text("O FM Livre não possui permissão de internet, não usa root e não faz streaming. " +
+        add(content, text("O FM Livre Universal não possui permissão de internet, não usa root e não faz streaming. " +
                 "O diagnóstico não contorna as proteções do Android.", 12, secondary, false));
     }
 
@@ -553,14 +610,16 @@ public final class MainActivity extends Activity {
         String commands = "adb devices\n" +
                 "adb shell getprop ro.product.model\n" +
                 "adb shell getprop ro.build.version.release\n" +
-                "adb shell pm list packages | grep -iE 'fm|radio|miui'\n" +
+                "adb shell pm list packages | grep -iE 'fm|radio|miui|motorola|samsung'\n" +
                 "adb shell dumpsys package com.miui.fm\n" +
+                "adb shell dumpsys package com.sec.android.app.fm\n" +
+                "adb shell dumpsys package com.motorola.fmplayer\n" +
                 "adb shell dumpsys media.audio_policy\n";
         copyString("Comandos ADB Linux/macOS (no Windows use findstr)", commands);
         new AlertDialog.Builder(this)
                 .setTitle("Comandos copiados")
                 .setMessage("Execute num computador com ADB e depuração USB autorizada. " +
-                        "No PowerShell, troque o trecho 'grep -iE ...' por 'findstr /I fm radio miui'. " +
+                        "No PowerShell, troque 'grep -iE ...' por 'findstr /I fm radio miui motorola samsung'. " +
                         "Os comandos apenas consultam informações; não sintonizam FM.")
                 .setPositiveButton("Entendi", null).show();
     }
