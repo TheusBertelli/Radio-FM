@@ -26,6 +26,10 @@ Aplicativo Android nativo para **diagnosticar indícios de suporte ao rádio FM 
 
 O APK `debug` é **assinado automaticamente para testes** pelo sistema Android Gradle Plugin; não é um APK de produção/Play Store.
 
+## Correção da falha do GitHub Actions (SDK `tools`)
+
+Se a execução exibir `Warning: Failed to find package 'tools'` e terminar no passo `android-actions/setup-android@v3`, atualize `.github/workflows/android-apk.yml` com o arquivo deste projeto. A versão 4 da action não tenta instalar o antigo pacote `tools`; ela configura as ferramentas de linha de comando e o projeto instala apenas `platforms;android-35` e `build-tools;35.0.0`. Faça commit na `main` e execute o workflow novamente. O erro ocorre **antes** da compilação do aplicativo, portanto não é evidência de erro no código Java.
+
 ## Compilar localmente (Windows / Android Studio)
 
 Requisitos: Android Studio com Android SDK 35, JDK 17 e acesso à internet **somente para baixar as dependências de compilação**.
